@@ -2,7 +2,6 @@ from minesweeper import Server
 from flask_socketio import SocketIO
 from typing import Dict, Tuple
 from random import randint
-from .logger import Logger
 
 import sys
 
@@ -19,13 +18,11 @@ DISCONNECT_TIME = 300
 SERVER_WAIT_TIME = 20  # 搁置
 
 CM_server = Server()
-CM_logger = Logger()
 
 
 def print_and_log(data):
     data = str(data)
     print(data)
-    CM_logger.log(data)
 
 
 def gen_cookie():

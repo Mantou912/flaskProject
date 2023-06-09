@@ -29,7 +29,7 @@ def login_connect():
         print_and_log(f'name = {username}')
 
         # 先判断账号密码是否正确
-        if CM_server.login(username, password) == True:
+        if CM_server.login(username, password):
             # 生成cookie
             cookie = None
             while True:
@@ -59,7 +59,7 @@ def login_connect():
 
 @clearMine_socketio.on('disconnect', namespace='/login')
 def login_disconnect():
-    '''登录连接断开时执行'''
+    """登录连接断开时执行"""
     extra = ''
     try:
         username = request.args['username']
@@ -101,7 +101,7 @@ def mine_connect():
 
 @clearMine_socketio.on('disconnect', namespace='/minesweeper')
 def mine_disconnect():
-    '''扫雷链接断开时, 注销用户cookie'''
+    """扫雷链接断开时, 注销用户cookie"""
     try:
         cookie = request.args['cookie']
         username, tm = cookie_user_dict[cookie]
@@ -115,7 +115,7 @@ def mine_disconnect():
 
 @clearMine_socketio.on('click', namespace='/minesweeper')
 def mine_click(info):
-    '''收到点击地图时间, 把数据中的参数抛给后端处理'''
+    """收到点击地图时间, 把数据中的参数抛给后端处理"""
 
     # # 若服务器ready码为假, 发送拒绝信息
     # if not CM_server.ready():

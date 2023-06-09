@@ -25,8 +25,8 @@ def mine():
             res = make_response(render_template('minesweeper.html'))
         else:
             res += ', 请重新登录'
-    except:
-        pass
+    except Exception as e:
+        print(e)
     return res
 
 
@@ -39,6 +39,6 @@ def total_rank():
             res = make_response(render_template('ranks.html'))
         else:
             res += ', 请重新登录'
-    except:
-        pass
+    except Exception as e:
+        print(e)
     return res

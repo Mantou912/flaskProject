@@ -18,7 +18,7 @@ class Server:
     def login(self, username: str, password: str) -> bool:
         """用于用户登录时,判断收到的账号密码是否匹配"""
         data = self.__SQL.select_by_user(username)
-        if data == None:
+        if data is None:
             return False
         return password == data["passwd"]
 
@@ -63,7 +63,7 @@ class Server:
         self.__ready = time.time() + waittime
         self.__CM.restart(True)
 
-    def ready(self) -> None:
+    def ready(self) -> bool:
         """判断游戏是否可以进行"""
         return time.time() > self.__ready
 

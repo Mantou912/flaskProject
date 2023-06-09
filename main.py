@@ -2,9 +2,9 @@ from flask import Flask
 from server.objects import clearMine_socketio
 from server.routes import clearMine_blueprint
 from flask_cors import CORS
+from server import events
 
-
-def create_app(debug = True):
+def create_app(debug=True):
     app = Flask(__name__)
     app.debug = debug
     app.config['SECRET_KEY'] = 'minesweeper'
@@ -16,6 +16,4 @@ def create_app(debug = True):
 
 if __name__ == '__main__':
     app = create_app()
-    clearMine_socketio.run(app, host='192.168.127.223', port=26666)
-
-
+    clearMine_socketio.run(app, host='127.0.0.1', port=26666)
