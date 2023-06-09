@@ -4,6 +4,7 @@ from server.routes import clearMine_blueprint
 from flask_cors import CORS
 from server import events
 
+
 def create_app(debug=True):
     app = Flask(__name__)
     app.debug = debug
