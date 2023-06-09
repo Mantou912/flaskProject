@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>login</title>
+    <style>
+        .entity {
+            position: absolute;
+            z-index: 10;
+            right: 0;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+            margin-top: 200px;
+            font-size: 18px;
+            width: 650px;
+            height: 330px;
+            background: #848a84a2;
+            border-radius: 10px;
+            color: #0c0c0c;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            text-align: center;
+            margin-top: 40px;
+            margin-bottom: 10px;
+            font-size: 30px;
+            color: #0a0641;
+        }
+
+        .form_input1 {
+            padding: 0 150px;
+            box-sizing: border-box;
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .form_input2 {
+            padding: 0 170px;
+            box-sizing: border-box;
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .bnt {
+            padding: 0 300px;
+            box-sizing: border-box;
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .cha {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+<script src={{ url_for('static', filename='socket.io.js' ) }}></script>
+<div class="entity">
+		<span class="title">
+			<font size="5">疫情期间聚众扫雷</font>
+		</span>
+
+    <div class="form_input1">
+			<span>
+				<font size="5">用户名：</font>
+			</span> <input class="inputs" type="text" id="id">
+    </div>
+
+    <div class="form_input2">
+			<span>
+				<font size="5">密码：</font>
+			</span> <input class="inputs" type="password" id="password" onkeydown="if(event.keyCode==13) {login()}">
+    </div>
+    <div class="bnt" onclick="login()">
+        <button id="login_bnt">登录</button>
+
+        <script>
+
+            //点击回车事件
+            function enter(event) {
+                var event = window.event ? window.event : event
+                if (event.keyCode == 13) {
+                    $("#login_bnt").click();
+                }
+            }
+
+            //登录事件
+            function login() {
+                var username = document.getElementById("id").value;
+                var password = document.getElementById("password").value;
+                socket = io.connect('ws://' + document.domain + ':' + location.port + '/login', {
+                    reconnectionDelayMax: 10000,
+                    query: {
+                        "username": username,
+                        "password": password
+                    }
+                });
+
+
+                //接收服务器信息，传送cookie
+                socket.on("reply", (cookie) => {
+                    if (cookie == "deny") {
+                        socket.disconnect();
+                        alert("用户名或密码错误！")
+                    } else {
+                        window.location.href = encodeURI('/minesweeper?uname=' + cookie);
+                    }
+                })
+            }
+        </script>
+    </div>
+
+    <div class="cha">
+        <a href='/register'> 没有账号？注册一个 </a>
+    </div>
+
+    <script>
+        //接收register.html的注册信息
+        var name = decodeURI(document.URL);
+        name = name.slice(name.indexOf("=") + 1);
+        if (name == "1") alert("注册成功，请登录！");
+    </script>
+</div>
+</body>
+
+</html>

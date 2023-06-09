@@ -1,0 +1,208 @@
+<html>
+
+<head>
+    <style>
+        table {
+            margin: auto;
+        }
+
+        th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background-color: #c6ffc6;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        .text-effect {
+            color: #fff;
+            font-family: 'Monoton', cursive;
+            font-size: 40px;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-align: center;
+            margin: 0 auto;
+            display: block;
+            position: relative;
+        }
+
+        .text-effect span {
+            animation: animate linear 2000ms infinite;
+        }
+
+        .text-effect span:nth-child(1n) {
+            animation-delay: 0s;
+        }
+
+        .text-effect span:nth-child(2n) {
+            animation-delay: 100ms;
+        }
+
+        .text-effect span:nth-child(3n) {
+            animation-delay: 200ms;
+        }
+
+        .text-effect span:nth-child(4n) {
+            animation-delay: 300ms;
+        }
+
+        .text-effect span:nth-child(5n) {
+            animation-delay: 400ms;
+        }
+
+        .text-effect span:nth-child(6n) {
+            animation-delay: 500ms;
+        }
+
+        .text-effect span:nth-child(7n) {
+            animation-delay: 600ms;
+        }
+
+        .text-effect span:nth-child(8n) {
+            animation-delay: 700ms;
+        }
+
+        .text-effect span:nth-child(9n) {
+            animation-delay: 800ms;
+        }
+
+        .text-effect span:nth-child(10n) {
+            animation-delay: 900ms;
+        }
+
+        @keyframes animate {
+            0% {
+                opacity: 0.3;
+            }
+            100% {
+                opacity: 1;
+                text-shadow: 0 0 80px Red, 0 0 30px orange, 0 0 6px DarkRed;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+<script src={{ url_for('static', filename='socket.io.js' ) }}></script>
+
+<button id="login_bnt" onclick=send_inf()>刷新榜单</button>
+<div class="contextmenu">
+    <table>
+        <thead>
+        <div class="text-effect">
+            <span>扫雷总榜</span>
+        </div>
+        </thead>
+        <thead>
+        <tr>
+            <th>用户名&nbsp;&nbsp;</th>
+            <th>开荒总数</th>
+            <th>总坑壁值</th>
+            <th>总 K/D</th>
+        </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
+    </table>
+    <script>
+        //接收saolei查看总榜界面的cookie
+        var name = decodeURI(document.URL);
+        name = name.slice(name.indexOf("=") + 1);
+        socket = io.connect('ws://' + document.domain + ':' + location.port + '/ranks', {
+            reconnectionDelayMax: 10000,
+            query: {
+                "cookie": name
+            }
+        })
+        socket.on("connect", function conn_inf() {
+            socket.emit("total_rank", "query rank")
+        })
+
+        function send_inf() {
+            socket.emit("total_rank", "query rank")
+        }
+
+        //接收数据库里的总榜信息
+        socket.on("total_rank", (revallrank) => {
+
+            let rev_rank = JSON.parse(revallrank);
+
+            let tbody = document.querySelector('tbody');
+            let child = tbody.childNodes;
+            for (let i = child.length - 1; i >= 0; i--) {
+                tbody.removeChild(child[i]);
+            }
+
+            /*创建信息数组*/
+            let datas = [];
+            let sortdata = [];
+            let index = [];
+            for (let i = 0; i < rev_rank.length; i++) {
+                if (rev_rank[i].boomCount == 0)
+                    rev_rank[i].kd = rev_rank[i].clearCount
+                else {
+                    rev_rank[i].kd = rev_rank[i].clearCount / rev_rank[i].boomCount;
+                }
+            }
+
+            for (let key = 0; key < rev_rank.length; key++) {
+                datas[key] = {
+                    name: rev_rank[key].username,
+                    clearCount: rev_rank[key].clearCount,
+                    boomCount: rev_rank[key].boomCount,
+                    kd: rev_rank[key].kd
+                };
+                index[key] = key;
+                sortdata[key] = rev_rank[key].kd;
+            }
+
+            for (let m = 0; m < sortdata.length; m++) {
+                for (let n = 0; n < sortdata.length; n++) {
+                    if (m != n && sortdata[n] < sortdata[m]) {
+                        let tmp = sortdata[n];
+                        sortdata[n] = sortdata[m];
+                        sortdata[m] = tmp;
+                        let tmp_index = index[n];
+                        index[n] = index[m];
+                        index[m] = tmp_index;
+                    }
+                }
+            }
+
+            for (let i = 0; i < datas.length; i++) {
+                let tr = document.createElement('tr');
+                tbody.appendChild(tr); //创建行
+                for (let k in datas[index[i]]) {
+                    let td = document.createElement('td');
+                    if (k == "kd") {
+                        td.innerHTML = datas[index[i]][k].toFixed(2);
+                        tr.appendChild(td); //创建列
+                        continue
+                    }
+                    td.innerHTML = datas[index[i]][k];
+                    tr.appendChild(td); //创建列
+                }
+            }
+        })
+    </script>
+</div>
+
+</body>
+
+</html>
