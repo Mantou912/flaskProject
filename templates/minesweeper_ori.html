@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>MineSweeper</title>
+    <style>
+
+        .contextmenu {
+            width: 350px;
+            border: 1px solid #999;
+            box-shadow: 3px 3px 3px #ccc;
+            background-color: #fff;
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            display: none;
+            z-index: 9999999
+        }
+
+    </style>
+</head>
+
+<body>
+    <canvas id="mycanv" width="10000" height="10000"></canvas>
+    <div class="contextmenu" id="context">
+        <table>
+            <thead>
+                <div>
+                    <a href="" target="_blank" id="totallink"><font color="blue">查看总榜</font></a>
+                </div>
+            </thead>
+            <thead>
+                本局扫雷排行榜&nbsp;&nbsp;&nbsp;
+            </thead>
+            <thead>
+                <tr>
+                    <th>用户名&nbsp;&nbsp;</th>
+                    <th>坑壁值</th>
+                    <th>开荒数</th>
+                    <th>K/D</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        //获取画布变量
+        var canv = document.getElementById('mycanv');
+        var ctx = canv.getContext('2d');
+        //默认传输变量
+        var DEFAULT_ROW_SIZE = 300;
+        var DEFAULT_COL_SZIE = 300;
+        var DEFAULT_SEED = 1437;
+        var DEFAULT_MOD = 33554393;
+        var DEFAULT_PART_SIZE = 16;
+        var DEFAULT_PART_MINE_NUM = 48;
+        var DEFAULT_DELTA = DEFAULT_SEED;
+        var fib1 = 1;
+        var fib2 = 2;
+        //全部坐标信息
+        var g_arr = [];
+        /*********************************************************
+         * g_obj 变量记录了每个坐标(x,y)的具体信息
+         * 1.mark ： 即格子中应显示的数字，其中 -1 为炸弹，其他则表示格子周围有多少炸弹
+         * 2.open ： 即当前格子有没有被打开 0 关闭 1 打开
+         * 3.init ： 生成雷时用到的初始化数
+         * 4.time ： 时间戳，用于判断用户的先后顺序
+         * ... (根据需求可自行添加)
+         * ******************************************************/
+        var g_obj = {};
+        //颜色数据,记录了雷，格子等应用什么颜色
+        var g_color = { block: '#CCDDFF', mine: '#bbb', open: '#ddd', highlight: '#89f' };
+        //图标数据，利用字符图标在格子上填充信息
+        var mine = ['💣', '🚩', '❔', '💥'];
+        //记录雷的数组，记录了所有是雷的坐标
+        var mine_arr = [];
+        //每个格子的宽度
+        var w = 30;
+        //圆角矩形的圆角半径
+        var r = 8;
+        //每个格子之间相隔的距离
+        var m = 2;
+
+
+
+        /**********************************************************
+         * 函数名：start
+         * 函数接口：row 行数，col 列数，seed 地图种子，mod 模数，size 子块大小， mine_num 子块雷数
+         * 函数功能：启动并初始化游戏信息
+         * *******************************************************/
+        function start(row, col, seed, mod, size, mine_num) {
+            init(row, col, seed, mod, size, mine_num);
+            get_mine();
+            setMine();
+        }
+
+
+        /**********************************************************
+         * 函数名：set_from
+         * 函数接口：weight 方块宽度， radius 圆角矩形的圆角半径， dis 块间距
+         * 函数功能：设置块大小与间距
+         * *******************************************************/
+        function set_from(weight, radius, dis) {
+            w = weight;
+            r = radius;
+            m = dis;
+        }
+
+
+        /**********************************************************
+         * 函数名：init
+         * 函数接口：row 行数，col 列数，seed 地图种子，mod 模数，size 子块大小， mine_num 子块雷数
+         * 函数功能：初始化变量并生成地图
+         * *******************************************************/
+        function init(row, col, seed, mod, size, mine_num) {
+            //设置初始化变量
+            DEFAULT_ROW_SIZE = row;
+            DEFAULT_COL_SZIE = col;
+            DEFAULT_SEED = seed;
+            DEFAULT_MOD = mod;
+            DEFAULT_PART_SIZE = size;
+            DEFAULT_PART_MINE_NUM = mine_num;
+            DEFAULT_DELTA = seed;
+            fib1 = 1;
+            fib2 = 2;
+            g_arr = [];
+            mine_arr = [];
+
+            //循环生成坐标信息，并在canvas中画出
+            for (let i = 0; i < DEFAULT_ROW_SIZE; i++) {
+                for (let j = 0; j < DEFAULT_COL_SZIE; j++) {
+                    let xy = j + '-' + i;
+                    g_arr.push(xy);
+                    g_obj[xy] = { mark: 0, open: 0, init: 0, time: 9999999999 };
+                    drawBlock(xy, g_color.block);
+                }
+            }
+        }
+
+        /**********************************************************
+         * 函数名：get_mine
+         * 函数接口：无
+         * 函数功能：利用设计的算法获得为雷的坐标并写入mine_arr中
+         * *******************************************************/
+        function get_mine() {
+            //对于每个子块的行列大小
+            let currow, curcol;
+            //循环的到每个子块左上角的第一个块
+            for (let i = 0; i < DEFAULT_ROW_SIZE; i += DEFAULT_PART_SIZE) {
+                for (let j = 0; j < DEFAULT_COL_SZIE; j += DEFAULT_PART_SIZE) {
+                    //判断是否越界，并计算子块的边长
+                    if (i + DEFAULT_PART_SIZE > DEFAULT_ROW_SIZE)
+                        currow = DEFAULT_ROW_SIZE - i;
+                    else
+                        currow = DEFAULT_PART_SIZE;
+
+                    if (j + DEFAULT_PART_SIZE > DEFAULT_COL_SZIE)
+                        curcol = DEFAULT_COL_SZIE - j;
+                    else
+                        curcol = DEFAULT_PART_SIZE;
+
+
+                    //初始化子块信息
+                    let cnt = 0;
+                    let num = currow * curcol * DEFAULT_PART_MINE_NUM;
+                    num = ~~(num / (DEFAULT_PART_SIZE * DEFAULT_PART_SIZE));
+                    //生成子块内部雷编号
+                    for (let k = i; k < i + currow; k++) {
+                        for (let l = j; l < j + curcol; l++) {
+                            let kl = l + '-' + k;
+                            g_obj[kl].init = cnt;
+                            cnt++;
+                        }
+                    }
+
+                    //利用算法打乱内部顺序
+                    for (let k = i; k < i + currow; k++) {
+                        for (let l = j; l < j + curcol; l++) {
+                            let kl = l + '-' + k;
+                            get_change(currow, curcol, i, j, kl);
+                        }
+                    }
+
+
+                    //根据打乱的编号找到雷并放入mine_arr
+                    for (let k = i; k < i + currow; k++) {
+                        for (let l = j; l < j + curcol; l++) {
+                            let kl = l + '-' + k;
+                            if (g_obj[kl].init < num) {
+                                mine_arr.push(kl);
+                                g_obj[kl].mark = -1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /**********************************************************
+         * 函数名：get_change
+         * 函数接口：row 子块行数， col 子块列数 , i 相对偏移量 ， j 相对偏移量
+         *          kl待交换的坐标
+         * 函数功能：算法中需要的交换函数，用于实现打乱顺序
+         * *******************************************************/
+        function get_change(row, col, i, j, kl) {
+            //迭代斐波那契数组
+            let temp = fib1;
+            fib1 = fib2;
+            fib2 = (temp + fib2) % DEFAULT_MOD;
+            //迭代种子
+            while (true) {
+                DEFAULT_DELTA = (DEFAULT_DELTA * fib1) % DEFAULT_MOD;
+                if (DEFAULT_DELTA > row * col)
+                    break;
+            }
+            //生成要交换的坐标
+            let y = DEFAULT_DELTA % row;
+            temp = DEFAULT_DELTA;
+            temp = ~~(temp / row);
+            let x = temp % col;
+            let xy = `${x + j}-${y + i}`;
+            //进行交换
+            temp = g_obj[xy].init;
+            g_obj[xy].init = g_obj[kl].init;
+            g_obj[kl].init = temp;
+        }
+
+         /**********************************************************
+         * 函数名：setMine
+         * 函数接口：无
+         * 函数功能：根据生成的mine_arr数组，生成格子信息
+         * *******************************************************/
+        function setMine() {
+            mine_arr.forEach(n => {
+                g_obj[n].mark = -1;
+                let around = getAround(n);
+                around.forEach(xy => {
+                    if (g_obj[xy].mark != -1)
+                        g_obj[xy].mark++;
+                });
+            })
+        }
+
+        /**********************************************************
+         * 函数名：showInfo
+         * 函数接口：无
+         * 函数功能：辅助显示函数，用于调试，正式游玩时请不要调用
+         * *******************************************************/
+        function showInfo() {
+            g_arr.forEach(n => {
+                if (g_obj[n].mark == -1) {
+                    drawBlock(n, g_color.mine);
+                    markText(n, mine[0]);
+                } else {
+                    markText(n, g_obj[n].mark);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名：markText
+         * 函数接口：xy x-y坐标， txt 要显示的内容
+         * 函数功能：用于在指定的(x,y)上显示文字等内容
+         * *******************************************************/
+        function markText(xy, txt) {
+            let [x, y] = xy.split('-').map(n => n * w);
+            ctx.save();
+            ctx.font = '15px Arial';
+            ctx.fillStyle = '#FFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(txt, x + w / 2, y + w / 2);
+            ctx.restore();
+        }
+
+        /**********************************************************
+         * 函数名：getaround
+         * 函数接口：xy x-y坐标
+         * 函数功能：获得(x,y)坐标周围八个格子内所有合法坐标
+         * *******************************************************/
+        function getAround(xy) {
+            let [x, y] = xy.split('-').map(n => n * 1);
+            let around = [];
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    let id = `${x + j}-${y + i}`;
+                    if (g_arr.includes(id) && id != xy)
+                        around.push(id);
+                }
+            }
+            return around;
+        }
+
+        /**********************************************************
+         * 函数名：drawBlock
+         * 函数接口：xy x-y坐标，c 填充的颜色
+         * 函数功能：画圆角矩形的函数，其中(x,y)为坐标，c为要填充的颜色或样式
+         * *******************************************************/
+        function drawBlock(xy, c) {
+            let [x, y] = xy.split('-').map(n => n * w);
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, y + r);
+            ctx.arcTo(x, y + w - m, x + w - m, y + w - m, r);
+            ctx.arcTo(x + w - m, y + w - m, x + w - m, y, r);
+            ctx.arcTo(x + w - m, y, x, y, r);
+            ctx.arcTo(x, y, x, y + w - m, r);
+            ctx.fillStyle = c;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        //为画布增加监听事件
+        canv.addEventListener('click', openBlock);
+        //为画布增加右键点击菜单事件
+        canv.addEventListener("contextmenu", kda);
+
+
+        /**********************************************************
+         * 函数名：openBlock
+         * 函数接口：ev事件变量
+         * 函数功能：在点击画布后触发的函数，首先会将格子打开，之后会发送
+         *          消息给服务器
+         * *******************************************************/
+        function openBlock(ev) {
+            //获得 x与y坐标
+            let x = ~~(ev.offsetX / w);
+            let y = ~~(ev.offsetY / w);
+            let xy = x + '-' + y;
+            //点击时关闭菜单页面
+            closeMenu();
+            //点击一次时先将格子打开之后再复颜色
+            if (g_arr.includes(xy) && g_obj[xy].open == 0)
+                sendmessage(xy);
+            if (g_obj[xy].mark == 0 && g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, g_obj[xy].mark);
+                dfszero(xy);
+            } else if (g_obj[xy].mark == -1 && g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, mine[0]);
+                markText(xy, mine[3]);
+            } else if (g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, g_obj[xy].mark);
+                dfsunzero(xy);
+            }
+            console.log(x, y);
+        }
+
+        /**********************************************************
+         * 函数名：kda
+         * 函数接口：ev事件变量
+         * 函数功能：在右键画布后触发的菜单函数，阻止了原本的菜单函数
+         *          并自己新定义了一个布局，用于排行榜
+         * *******************************************************/
+        function kda(ev) {
+            socket.emit("rank", "query rank")//收取排行榜信息
+            ev.preventDefault();
+            let e = ev;
+            let contextmenu = document.getElementById("context");
+            // 获取菜单，让菜单显示出来
+            let context = document.getElementById("context");
+            context.style.display = "block";
+            //  让菜单随着鼠标的移动而移动
+            //  获取鼠标的坐标
+            let x = e.offsetX;
+            let y = e.offsetY;
+
+            //  调整宽度和高度
+            context.style.left = x - 200 + "px" //Math.min(w-202,x)+"px";
+            context.style.top = y + "px" //Math.min(h-230,y)+"px";
+
+            // return false可以关闭系统默认菜单
+            return false;
+
+        }
+
+        /**********************************************************
+         * 函数名：dfszero
+         * 函数接口：xy (x,y)的坐标
+         * 函数功能：对于点到标记为0时的块的dfs算法
+         * *******************************************************/
+        function dfszero(xy) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].open == 0) {
+                    g_obj[n].open = 1;
+                    markText(n, g_obj[n].mark);
+                    if (g_obj[n].mark == 0)
+                        dfszero(n);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名：dfsunzero
+         * 函数接口：xy (x,y)的坐标
+         * 函数功能：对于点到标记为非0时的块的dfs算法
+         * *******************************************************/
+        function dfsunzero(xy) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].open == 0 && g_obj[n].mark == 0) {
+                    g_obj[n].open = 1;
+                    markText(n, g_obj[n].mark);
+                    dfszero(n);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名： dfs_color_zero
+         * 函数接口：xy (x,y)的坐标， revcolor收到的颜色 ， timmer 时间戳
+         * 函数功能：对于点到标记为0时的块时的上色算法
+         * *******************************************************/
+        function dfs_color_zero(xy, revcolor, timmer) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].time > timmer) {
+                    g_obj[n].time = timmer;
+                    drawBlock(n, revcolor);
+                    markText(n, g_obj[n].mark);
+                    if (g_obj[n].mark == 0)
+                        dfs_color_zero(n, revcolor, timmer);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名： dfs_color_unzero
+         * 函数接口：xy (x,y)的坐标， revcolor收到的颜色 ， timmer 时间戳
+         * 函数功能：对于点到标记为非0时的块时的上色算法
+         * *******************************************************/
+        function dfs_color_unzero(xy, revcolor, timmer) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].time > timmer && g_obj[n].mark == 0) {
+                    g_obj[n].time = timmer;
+                    drawBlock(n, revcolor);
+                    markText(n, g_obj[n].mark);
+                    dfs_color_zero(n, revcolor, timmer);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名： dfshistoryzero
+         * 函数接口：xy (x,y)的坐标， revcolor收到的颜色 ， timmer 时间戳
+         * 函数功能：当对于新用户进入时，收到的历史数据的dfs算法，此算法分为0的dfs
+         * *******************************************************/
+        function dfshistoryzero(xy, revcolor, timmer) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].open == 0) {
+                    g_obj[n].open = 1;
+                    g_obj[n].time = timmer;
+                    drawBlock(n, revcolor);
+                    markText(n, g_obj[n].mark);
+                    if (g_obj[n].mark == 0)
+                        dfshistoryzero(n, revcolor, timmer);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名： dfshistoryunzero
+         * 函数接口：xy (x,y)的坐标， revcolor收到的颜色 ， timmer 时间戳
+         * 函数功能：当对于新用户进入时，收到的历史数据的dfs算法，此算法分为非0的dfs
+         * *******************************************************/
+        function dfshistoryunzero(xy, revcolor, timmer) {
+            let around = getAround(xy);
+            around.forEach(n => {
+                if (g_obj[n].open == 0 && g_obj[n].mark == 0) {
+                    g_obj[n].open = 1;
+                    g_obj[n].time = timmer;
+                    drawBlock(n, revcolor);
+                    markText(n, g_obj[n].mark);
+                    dfshistoryzero(n, revcolor, timmer);
+                }
+            })
+        }
+
+        /**********************************************************
+         * 函数名： dfshistory
+         * 函数接口：xy (x,y)的坐标， revcolor收到的颜色 ， timmer 时间戳
+         * 函数功能：当对于新用户进入时，收到的历史数据的dfs算法，此函数为利用mark
+         *          值进行判断的函数，将其分为0，雷，和其他
+         * *******************************************************/
+        function dfshistory(xy, revcolor, timmer) {
+            if (g_obj[xy].mark == 0) {
+                drawBlock(xy, revcolor);
+                markText(xy, g_obj[xy].mark);
+                dfshistoryzero(xy, revcolor, timmer);
+            } else if (g_obj[xy].mark == -1) {
+                drawBlock(xy, revcolor);
+                markText(xy, mine[0]);
+                markText(xy, mine[3]);
+            } else {
+                drawBlock(xy, revcolor);
+                markText(xy, g_obj[xy].mark);
+                dfshistoryunzero(xy, revcolor, timmer);
+            }
+        }
+
+        /**********************************************************
+         * 函数名： closeMenu
+         * 函数接口：无
+         * 函数功能：用于关闭菜单页面
+         * *******************************************************/
+        function closeMenu() {
+            let contextmenu = document.getElementById("context");
+            contextmenu.style.display = "none";
+        }
+
+
+    </script>
+
+    <script src={{ url_for('static', filename='socket.io.js' ) }}></script>
+
+    <script>
+        //接受登陆界面cookie
+        var this_cookie = decodeURI(document.URL);
+        this_cookie = this_cookie.slice(this_cookie.indexOf("=") + 1);
+        socket = io.connect('ws://' + document.domain + ':' + location.port + '/minesweeper', {
+            reconnectionDelayMax: 10000,
+            query: {
+                "cookie": this_cookie
+            }
+        });
+
+        //设置总榜页面地址并送出用户名数据作为鉴别
+        var totalranklink='/ranks?uname='+this_cookie;
+        document.getElementById("totallink").href = totalranklink;
+
+
+
+        socket.on("connect", (revconnect) => {
+            alert("地图生成时间可能较长，请稍等！\n\n扫雷时请不要快速点击，服务器承受不住！");
+        })
+
+        revseed()
+        /**********************************************************
+         * 函数名： revseed
+         * 函数接口：无
+         * 函数功能：初始化，建立连接，接收服务器的种子
+         * *******************************************************/
+        function revseed() {
+            socket.on("args", (seedmsg) => {//用于接收服务器发送客服端
+                let seed = JSON.parse(seedmsg);
+                let new_row = seed.row;
+                let new_col = seed.col;
+                let new_partsize = seed.partsize;
+                let new_mine = seed.mine;
+                let new_mod = seed.mod;
+                let new_seed = seed.seed;
+                console.log(seed);
+                start(new_row, new_col, new_seed, new_mod, new_partsize, new_mine);
+                //showInfo();
+            })
+        }
+
+        //接受来自服务器的历史数据信息，用于同步新用户信息
+        socket.on("history", (revhistory) => {
+            console.log(revhistory);
+            let obj = [];
+            obj = JSON.parse(revhistory);
+            let rows = obj.length
+            for (let i = 0; i < rows; i++) {
+                console.log(obj[i][0])
+                console.log(obj[i][1])
+                console.log(obj[i][2])
+                let xy = `${obj[i][1]}-${obj[i][0]}`;
+                dfshistory(xy, obj[i][2], i + 1);
+            }
+        })
+
+        //用于接收服务器发送客服端
+        socket.on("rank_rev", (revrank) => {
+            let rev_rank = JSON.parse(revrank);
+            let tbody = document.querySelector('tbody');
+            let child = tbody.childNodes;
+            for (let i = child.length - 1; i >= 0; i--) {
+                tbody.removeChild(child[i]);
+            }
+            //创建学生信息数组
+            let datas = [];
+            let sortdata = [];
+            let index = [];
+            let j = 0;
+            //根据key值提出json字典中的值
+            for (let key in rev_rank) {
+                datas[j] = {
+                    name: rev_rank[key].username,
+                    boom: rev_rank[key].boom,
+                    color: rev_rank[key].color,
+                    score: rev_rank[key].score,
+                    kd: 0
+                };
+                j++;
+            }
+            //计算每个用户的kda
+            for (let i = 0; i < datas.length; i++) {
+                if (datas[i].boom == 0) datas[i].kd = datas[i].score
+                else datas[i].kd = datas[i].score / datas[i].boom
+                sortdata[i] = datas[i].kd;
+                index[i] = [i];
+            }
+            //根据用户的kda进行排序
+            for (let m = 0; m < sortdata.length; m++) {
+                for (let n = 0; n < sortdata.length; n++) {
+                    if (m != n && sortdata[n] < sortdata[m]) {
+                        let tmp = sortdata[n];
+                        sortdata[n] = sortdata[m];
+                        sortdata[m] = tmp;
+                        let tmp_index = index[n];
+                        index[n] = index[m];
+                        index[m] = tmp_index;
+                    }
+                }
+            }
+            //使用动态建表生成排行榜
+            for (let i = 0; i < datas.length; i++) {
+                let tr = document.createElement('tr');
+                tbody.appendChild(tr);
+                let cur_color = datas[index[i]].color;
+                console.log(cur_color);
+                for (let k in datas[index[i]]) {
+                    if (k == "color")
+                        continue;
+                    let td = document.createElement('td');
+                    if (k == "kd") {
+                        td.innerHTML = datas[index[i]][k].toFixed(2);
+                        tr.appendChild(td);
+                        tr.style.background = cur_color;
+                        continue
+                    }
+                    td.innerHTML = datas[index[i]][k];
+                    tr.appendChild(td);
+                    tr.style.background = cur_color;
+                }
+            }
+        })
+
+        /**********************************************************
+         * 函数名： sendmessage
+         * 函数接口：xy 即(x,y)坐标
+         * 函数功能：当用户点击时，如果点击合法，会给服务器发送坐标信息
+         * *******************************************************/
+        function sendmessage(xy) {
+            let [x, y] = xy.split('-').map(n => n * 1);
+            let sendxy = JSON.stringify({ "x": y, "y": x, "cookie": this_cookie })
+            socket.emit('click', sendxy)
+        }
+
+        //用于接受服务器一局游戏结束时发来的消息，用文字告知用户结果
+        socket.on("game end", (revend) => {
+            let end_msg = JSON.parse(revend);
+            let end_str="";
+            let datas = [];
+            let sortdata = [];
+            let index = [];
+            let j = 0;
+            for (let key in end_msg) {
+                datas[j] = {
+                    name: end_msg[key].username,
+                    boom: end_msg[key].boom,
+                    color: end_msg[key].color,
+                    score: end_msg[key].score,
+                    kd: 0
+                };
+                j++;
+            }
+            for (let i = 0; i < datas.length; i++) {
+                if (datas[i].boom == 0) datas[i].kd = datas[i].score
+                else datas[i].kd = datas[i].score / datas[i].boom
+                sortdata[i] = datas[i].kd;
+                index[i] = [i];
+            }
+            for (let m = 0; m < sortdata.length; m++) {
+                for (let n = 0; n < sortdata.length; n++) {
+                    if (m != n && sortdata[n] < sortdata[m]) {
+                        let tmp = sortdata[n];
+                        sortdata[n] = sortdata[m];
+                        sortdata[m] = tmp;
+                        let tmp_index = index[n];
+                        index[n] = index[m];
+                        index[m] = tmp_index;
+                    }
+                }
+            }
+            for (let i = 0; i < datas.length; i++) {
+
+                end_str+="用户名："+datas[index[i]].name+" ";
+                end_str+="坑壁值："+datas[index[i]].boom+" ";
+                end_str+="使用颜色："+datas[index[i]].color+" ";
+                end_str+="开荒数："+datas[index[i]].score+" ";
+                end_str+="K/D："+datas[index[i]].kd+" ";
+                end_str+="\n"
+
+            }
+            alert("本局游戏结束！\n"+end_str);
+        });
+
+
+        //用于接受服务器的广播消息，即当有用户点击时，更新所有用户的界面
+        socket.on("broadcast", (revbroad) => {
+            let msg = JSON.parse(revbroad);
+            let revx = msg.y;
+            let revy = msg.x;
+            let revcolor = msg.color;
+            let revtimmer = msg.timmer;
+            let xy = `${revx}-${revy}`;
+            console.log(msg);
+            //首先将格子打开
+            if (g_obj[xy].mark == 0 && g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, g_obj[xy].mark);
+                dfszero(xy);
+            } else if (g_obj[xy].mark == -1 && g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, mine[0]);
+                markText(xy, mine[3]);
+            } else if (g_obj[xy].open == 0) {
+                g_obj[xy].open = 1;
+                markText(xy, g_obj[xy].mark);
+                dfsunzero(xy);
+            }
+            //之后将格子上色
+            if (g_obj[xy].mark == 0 && g_obj[xy].time > revtimmer) {
+                g_obj[xy].time = revtimmer;
+                drawBlock(xy, revcolor);
+                markText(xy, g_obj[xy].mark);
+                dfs_color_zero(xy, revcolor, revtimmer);
+            } else if (g_obj[xy].mark == -1 && g_obj[xy].time > revtimmer) {
+                g_obj[xy].time = revtimmer;
+                drawBlock(xy, revcolor);
+                markText(xy, mine[0]);
+                markText(xy, mine[3]);
+            } else if (g_obj[xy].time > revtimmer) {
+                g_obj[xy].time = revtimmer;
+                drawBlock(xy, revcolor);
+                markText(xy, g_obj[xy].mark);
+                dfs_color_unzero(xy, revcolor, revtimmer);
+            }
+        })
+
+    </script>
+
+
+
+</body>
+
+</html>

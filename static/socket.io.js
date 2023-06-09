@@ -1170,7 +1170,7 @@
 
                     if ("close" === packet.type) {
                         _this3.onClose({
-                            description: "transport closed by the server"
+                            description: "transport closed by the utils"
                         });
 
                         return false;
@@ -2208,7 +2208,7 @@
                             break;
 
                         case "error":
-                            var err = new Error("server error"); // @ts-ignore
+                            var err = new Error("utils error"); // @ts-ignore
 
                             err.code = packet.data;
                             this.onError(err);
@@ -2244,7 +2244,7 @@
                 this.resetPingTimeout();
             }
             /**
-             * Sets and resets ping timeout timer based on server pings.
+             * Sets and resets ping timeout timer based on utils pings.
              *
              * @api private
              */
@@ -2303,7 +2303,7 @@
                 }
             }
             /**
-             * Ensure the encoded size of the writeBuffer is below the maxPayload value sent by the server (only for HTTP
+             * Ensure the encoded size of the writeBuffer is below the maxPayload value sent by the utils (only for HTTP
              * long-polling)
              *
              * @private
@@ -3404,7 +3404,7 @@
                             var id = packet.data.sid;
                             this.onconnect(id);
                         } else {
-                            this.emitReserved("connect_error", new Error("It seems you are trying to reach a Socket.IO server in v2.x with a v3.x client, but they are not compatible (more information here: https://socket.io/docs/v3/migrating-from-2-x-to-3-0/)"));
+                            this.emitReserved("connect_error", new Error("It seems you are trying to reach a Socket.IO utils in v2.x with a v3.x client, but they are not compatible (more information here: https://socket.io/docs/v3/migrating-from-2-x-to-3-0/)"));
                         }
 
                         break;
@@ -3433,7 +3433,7 @@
                 }
             }
             /**
-             * Called upon a server event.
+             * Called upon a utils event.
              *
              * @param packet
              * @private
@@ -3505,7 +3505,7 @@
                 };
             }
             /**
-             * Called upon a server acknowlegement.
+             * Called upon a utils acknowlegement.
              *
              * @param packet
              * @private
@@ -3522,7 +3522,7 @@
                 }
             }
             /**
-             * Called upon server connect.
+             * Called upon utils connect.
              *
              * @private
              */
@@ -3558,7 +3558,7 @@
                 this.sendBuffer = [];
             }
             /**
-             * Called upon server disconnect.
+             * Called upon utils disconnect.
              *
              * @private
              */
@@ -3567,10 +3567,10 @@
             key: "ondisconnect",
             value: function ondisconnect() {
                 this.destroy();
-                this.onclose("io server disconnect");
+                this.onclose("io utils disconnect");
             }
             /**
-             * Called upon forced client/server side disconnections,
+             * Called upon forced client/utils side disconnections,
              * this method ensures the manager stops tracking us and
              * that reconnections don't get triggered for this.
              *
@@ -3658,12 +3658,12 @@
             }
             /**
              * Sets a modifier for a subsequent event emission that the callback will be called with an error when the
-             * given number of milliseconds have elapsed without an acknowledgement from the server:
+             * given number of milliseconds have elapsed without an acknowledgement from the utils:
              *
              * ```
              * socket.timeout(5000).emit("my-event", (err) => {
              *   if (err) {
-             *     // the server did not acknowledge the event in the given delay
+             *     // the utils did not acknowledge the event in the given delay
              *   }
              * });
              * ```

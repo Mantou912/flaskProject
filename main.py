@@ -1,8 +1,8 @@
 from flask import Flask
-from server.objects import clearMine_socketio
-from server.routes import clearMine_blueprint
+from utils.objects import clearMine_socketio
+from utils.routes import clearMine_blueprint
 from flask_cors import CORS
-from server import events
+from utils import events
 
 
 def create_app(debug=True):

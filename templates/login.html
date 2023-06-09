@@ -1,132 +1,230 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>login</title>
     <style>
-        .entity {
-            position: absolute;
-            z-index: 10;
-            right: 0;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            margin: 200px auto auto;
-            font-size: 18px;
-            width: 650px;
-            height: 330px;
-            background: #848a84a2;
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        input,
+        button {
+            background: transparent;
+            border: 0;
+            outline: none;
+        }
+
+        body {
+            height: 100vh;
+            background: linear-gradient(#141e30, #243b55);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            color: #03e9f4;
+        }
+
+        .loginBox {
+            width: 400px;
+            height: 364px;
+            background-color: #0c1622;
+            margin: 100px auto;
             border-radius: 10px;
-            color: #0c0c0c;
-            display: flex;
-            flex-direction: column;
+            box-shadow: 0 15px 25px 0 rgba(0, 0, 0, .6);
+            padding: 40px;
+            box-sizing: border-box;
         }
 
-        .title {
+        h2 {
             text-align: center;
-            margin-top: 40px;
-            margin-bottom: 10px;
-            font-size: 30px;
-            color: #0a0641;
+            color: aliceblue;
+            margin-bottom: 30px;
+            font-family: 'Courier New', Courier, monospace;
         }
 
-        .form_input1 {
-            padding: 0 150px;
+        .item {
+            height: 45px;
+            border-bottom: 1px solid #fff;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .item input {
+            width: 100%;
+            height: 100%;
+            color: #fff;
+            padding-top: 20px;
             box-sizing: border-box;
-            display: flex;
-            margin-top: 20px;
         }
 
-        .form_input2 {
-            padding: 0 170px;
-            box-sizing: border-box;
-            display: flex;
-            margin-top: 20px;
+        .item input:focus + label,
+        .item input:valid + label {
+            top: 0px;
+            font-size: 2px;
         }
 
-        .bnt {
-            padding: 0 300px;
-            box-sizing: border-box;
-            display: flex;
-            margin-top: 20px;
+        .item label {
+            position: absolute;
+            left: 0;
+            top: 12px;
+            transition: all 0.5s linear;
         }
 
-        .cha {
-            text-align: center;
-            margin-top: 20px;
+        .btn {
+            padding: 10px 20px;
+            margin-top: 30px;
+            color: #03e9f4;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            left: 35%;
+        }
+
+        .btn:hover {
+            border-radius: 5px;
+            color: #fff;
+            background: #03e9f4;
+            box-shadow: 0 0 5px 0 #03e9f4,
+            0 0 25px 0 #03e9f4,
+            0 0 50px 0 #03e9f4,
+            0 0 100px 0 #03e9f4;
+            transition: all 1s linear;
+        }
+
+        .btn > span {
+            position: absolute;
+        }
+
+        .btn > span:nth-child(1) {
+            width: 100%;
+            height: 2px;
+            background: -webkit-linear-gradient(left, transparent, #03e9f4);
+            left: -100%;
+            top: 0px;
+            animation: line1 1s linear infinite;
+        }
+
+        @keyframes line1 {
+
+            50%,
+            100% {
+                left: 100%;
+            }
+        }
+
+        .btn > span:nth-child(2) {
+            width: 2px;
+            height: 100%;
+            background: -webkit-linear-gradient(top, transparent, #03e9f4);
+            right: 0px;
+            top: -100%;
+            animation: line2 1s 0.25s linear infinite;
+        }
+
+        @keyframes line2 {
+
+            50%,
+            100% {
+                top: 100%;
+            }
+        }
+
+        .btn > span:nth-child(3) {
+            width: 100%;
+            height: 2px;
+            background: -webkit-linear-gradient(left, #03e9f4, transparent);
+            left: 100%;
+            bottom: 0px;
+            animation: line3 1s 0.75s linear infinite;
+        }
+
+        @keyframes line3 {
+
+            50%,
+            100% {
+                left: -100%;
+            }
+        }
+
+        .btn > span:nth-child(4) {
+            width: 2px;
+            height: 100%;
+            background: -webkit-linear-gradient(top, transparent, #03e9f4);
+            left: 0px;
+            top: 100%;
+            animation: line4 1s 1s linear infinite;
+        }
+
+        @keyframes line4 {
+
+            50%,
+            100% {
+                top: -100%;
+            }
         }
     </style>
 </head>
 
 <body>
 <script src={{ url_for('static', filename='socket.io.js' ) }}></script>
-<div class="entity">
-		<span class="title">
-			<font size="5">疫情期间聚众扫雷</font>
-		</span>
+<div class="loginBox">
+    <h2>login</h2>
+    <div>
+        <div class="item">
+            <input type="text" id="username" required>
+            <label for="">userName</label>
+        </div>
+        <div class="item">
+            <input type="password" id="password" required>
+            <label for="">password</label>
+        </div>
+        <div>
+            <button class="btn" onclick="login()">submit
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <script>
+                //登录事件
+                function login() {
+                    let username = document.getElementById("username").value;
+                    let password = document.getElementById("password").value;
+                    let socket = io.connect('ws://' + document.domain + ':' + location.port + '/login', {
+                        reconnectionDelayMax: 10000,
+                        query: {
+                            "username": username,
+                            "password": password
+                        }
+                    });
 
-    <div class="form_input1">
-			<span>
-				<font size="5">用户名：</font>
-			</span> <input class="inputs" type="text" id="id">
-    </div>
-
-    <div class="form_input2">
-			<span>
-				<font size="5">密码：</font>
-			</span> <input class="inputs" type="password" id="password" onkeydown="if(event.keyCode===13) {login()}">
-    </div>
-    <div class="bnt" onclick="login()">
-        <button id="login_bnt">登录</button>
-
-        <script>
-
-            //点击回车事件
-            function enter(event) {
-                var event = window.event ? window.event : event
-                if (event.keyCode == 13) {
-                    $("#login_bnt").click();
+                    //接收服务器信息，传送cookie
+                    socket.on("reply", (cookie) => {
+                        if (cookie === "deny") {
+                            socket.disconnect();
+                            alert("用户名或密码错误！")
+                        } else {
+                            window.location.href = encodeURI('/minesweeper?uname=' + cookie);
+                        }
+                    })
                 }
-            }
-
-            //登录事件
-            function login() {
-                var username = document.getElementById("id").value;
-                var password = document.getElementById("password").value;
-                socket = io.connect('ws://' + document.domain + ':' + location.port + '/wslogin', {
-                    reconnectionDelayMax: 10000,
-                    query: {
-                        "username": username,
-                        "password": password
-                    }
-                });
+            </script>
+        </div>
 
 
-                //接收服务器信息，传送cookie
-                socket.on("reply", (cookie) => {
-                    if (cookie == "deny") {
-                        socket.disconnect();
-                        alert("用户名或密码错误！")
-                    } else {
-                        window.location.href = encodeURI('/saolei?uname=' + cookie);
-                    }
-                })
-            }
-        </script>
     </div>
-
-    <div class="cha">
-        <a href='/register'> 没有账号？注册一个 </a>
-    </div>
-
-    <script>
-        //接收register.html的注册信息
-        var name = decodeURI(document.URL);
-        name = name.slice(name.indexOf("=") + 1);
-        if (name == "1") alert("注册成功，请登录！");
-    </script>
 </div>
+
+
 </body>
 
 </html>
