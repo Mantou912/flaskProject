@@ -22,7 +22,7 @@ def mine():
     res = '无权限'
     try:
         if request.args['uname'] in cookie_user_dict:
-            res = make_response(render_template('minesweeper.html'))
+            res = make_response(render_template('minesweeper_ori.html'))
         else:
             res += ', 请重新登录'
     except Exception as e:
